@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+body {
+    font-family: "TikTok Sans", sans-serif;
+}
+
+@font-face {
+    font-family: "TikTok Sans";
+    src: url("/TikTok.ttf");
+}
