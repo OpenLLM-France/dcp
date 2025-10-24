@@ -56,7 +56,7 @@ jobs:
           context: .
           file: back/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: ghcr.io/openllm-france/dcp:latest
           labels: ${{ steps.meta.outputs.labels }}
 
       #- name: Generate artifact attestation
