@@ -2,4 +2,6 @@ sqlalchemy
 sqlalchemy_utils
 python-dotenv
 psycopg2
+requests
+openai
 

@@ -6,6 +6,7 @@ import argparse
 import json
 import requests
 import re
+import random
 
 from openai_api_cache import OpenAICached
 
@@ -91,24 +92,31 @@ def main():
     parser.add_argument('-m', '--model', required=True, type=str, help='Model name')
     parser.add_argument('-r', '--temperature', default=0.0, type=float, help='Generation temperature')
     parser.add_argument('-c', '--cache-dir', default='./apicache/', type=str, help='API cache dir')
+    parser.add_argument('-a', '--random', type=bool, default=False, help='Don\'t ask LLM do random annotation')
+    parser.add_argument('-n', '--number', type=int, default=100, help='Number of random answers to generate')
     args = parser.parse_args()
 
-    api = OpenAICached(args.endpoint_url, args.api_key, args.model, f'./{args.cache_dir}/{args.model}.json')
-    if args.model not in [ v.id for v in api.models() ]:
-        print(api.models())
-        sys.stderr.write(f'ERROR: no model \"{args.model}\" on the endpoint \"{args.endpoint_url}\"\n')
-        return -1
+    if not args.random:
+        api = OpenAICached(args.endpoint_url, args.api_key, args.model, f'./{args.cache_dir}/{args.model}.json')
+        if args.model not in [ v.id for v in api.models() ]:
+            print(api.models())
+            sys.stderr.write(f'ERROR: no model \"{args.model}\" on the endpoint \"{args.endpoint_url}\"\n')
+            return -1
 
     session_id = create_bot_session_id(args.url, args.model, tmpl, { 'temperature': args.temperature })
 
     url = f'{args.url}/task/{args.task_id}/next?session_id={session_id}'
+    cnt = 0
     while True:
         response = requests.post(url, data = {}, cookies={'session_id': session_id})
         if response.ok:
             try:
                 data = response.json()
                 prompt = tmpl % (data['prompt'], data['generations'][0]['text'], data['generations'][1]['text'])
-                ans = api.generate(prompt, args.temperature, 1)
+                if args.random:
+                    ans = [ str(acceptable_answers[random.randint(0, len(acceptable_answers)-1)]) ]
+                else:
+                    ans = api.generate(prompt, args.temperature, 1)
                 for item in ans:
                     item = item.strip()
                     tok = re.split(r'\s+', item)
@@ -123,7 +131,9 @@ def main():
                             'task_instance_id': data['task_instance_id'],
                             'generation_a_id': data['generations'][0]['id'],
                             'generation_b_id': data['generations'][1]['id'],
-                            'value': code
+                            'value': code,
+                            'action': True,
+                            'criterion': 'main'
                         }
                         headers = { 'Content-Type': 'application/json', 'User-Agent': 'annotate_with_llm.py' }
                         dcp_response = requests.post(dcp_url, data=json.dumps(dcp_data), headers=headers, cookies={'session_id': session_id})
@@ -136,10 +146,15 @@ def main():
             except Exception as e:
                 sys.stderr.write(f'ERROR: {e}\n')
                 return -1
-            api.save()
+            if not args.random:
+                api.save()
         else:
             sys.stderr.write(f'ERROR: {response}\n')
             return -1
+
+        cnt += 1
+        if cnt > args.number:
+            break
 
     return 0
 
