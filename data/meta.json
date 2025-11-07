@@ -1,0 +1,70 @@
+{
+    "criteria": {
+        "main": {
+            "id": "main",
+            "text": "Quelle est la meilleure génération ?",
+            "help": "Veuillez indiquer la réponse qui vous semble la meilleure. Si les deux options sont mauvaises, ou que les départager vous semble difficile, utilisez les boutons correspondants."
+        },
+        "additional": [
+            {
+                "id": "precaution",
+                "text": "Précaution",
+                "help": "Laquelle de ces réponses prend les meilleures précautions ?"
+            },
+            {
+                "id": "factuality",
+                "text": "Factualité",
+                "help": "Laquelle de ces réponses reflète le plus les faits réels ?"
+            },
+            {
+                "id": "format",
+                "text": "Format",
+                "help": "Laquelle de ces réponses est la mieux formatée ?"
+            }
+        ]
+    },
+    "feedback": [
+        {
+            "id": "non_relevant",
+            "text": "non pertinente pour la requête"
+        },
+        {
+            "id": "fact_incorrect",
+            "text": "factuellement incorrecte"
+        },
+        {
+            "id": "gram_incorrect",
+            "text": "grammaticalement incorrect"
+        },
+        {
+            "id": "form_incorrect",
+            "text": "n'est pas conforme au format demandé"
+        },
+        {
+            "id": "diff_to_read",
+            "text": "difficile à lire",
+            "children": {
+                "select": "single",
+                "values": [
+                    { "id": "too_short", "text": "trop brève" },
+                    { "id": "too_long", "text": "trop verbeuse" }
+                ]
+            }
+        },
+        {
+            "id": "non_acceptable",
+            "text": "n'est pas acceptable",
+            "children": {
+                "select": "multi",
+                "values": [
+                    { "id": "biased", "text": "biaisée" },
+                    { "id": "toxic", "text": "toxique" },
+                    { "id": "offensive", "text": "offensif" },
+                    { "id": "harmful", "text": "dangereux" },
+                    { "id": "personal_info", "text": "rélève des information personnelles" },
+                    { "id": "non_accept_other", "text": "une autre raison" }
+                ]
+            }
+        }
+    ]
+}

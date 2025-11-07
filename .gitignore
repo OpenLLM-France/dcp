@@ -1,0 +1,47 @@
+# Ignore environment files
+.env
+
+# generate files and folders
+.venv/
+venv/
+
+# other files and folders
+misc
+
+# Ignore __pycache__ directories
+__pycache__/
+**/__pycache__/
+
+**/*upload_dir
+
+# Ignore some local files
+*.pdf
+*.ipynb
+**/*.ipynb
+CR.md
+
+
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+*.csv
+
+.venv/
+
+**/*.env.compose
+.python-version
+.vscode
+.DS_Store
+logs/
+
+*.db
+
+# services
+services/
+services/*
+!services/.gitkeep # Keep the placeholder
+
+*.pkl
+
+certbot
+
