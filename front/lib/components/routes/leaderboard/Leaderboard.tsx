@@ -36,6 +36,7 @@ export default function Leaderboard() {
                 {/* Add a row for the user if he's better than everyone on the current page */}
                 {userRating &&
                     userRating.num !== "⌛" &&
+                    leaderboardEntries[0] &&
                     leaderboardEntries[0].num !== "⌛" &&
                     userRating.num < leaderboardEntries[0].num && (
                         <tr className="text-center bg-blue-50 text-gray-500 text-sm ">
@@ -56,6 +57,7 @@ export default function Leaderboard() {
                 {/* Separate the user from the leaderboard with a ... row if he's not right next to the first of the page */}
                 {userRating &&
                     userRating.num !== "⌛" &&
+                    leaderboardEntries[0] &&
                     leaderboardEntries[0].num !== "⌛" &&
                     userRating.num < leaderboardEntries[0].num - 1 && (
                         <tr>
@@ -98,7 +100,7 @@ export default function Leaderboard() {
                 {/* Separate the user from the leaderboard with a ... row if he's not right next to the last of the page */}
                 {userRating &&
                     (userRating.num === "⌛" ||
-                        (leaderboardEntries[10].num !== "⌛" && userRating.num > leaderboardEntries[10].num + 1)) && (
+                        (leaderboardEntries[10] && leaderboardEntries[10].num !== "⌛" && userRating.num > leaderboardEntries[10].num + 1)) && (
                         <tr>
                             <td colSpan={4} className="text-center py-1 bg-gray-50 text-gray-500">
                                 &middot;&middot;&middot;
@@ -107,7 +109,7 @@ export default function Leaderboard() {
                     )}
                 {userRating &&
                     (userRating.num === "⌛" ||
-                        (leaderboardEntries[10].num !== "⌛" && userRating.num > leaderboardEntries[10].num)) && (
+                        (leaderboardEntries[10] && leaderboardEntries[10].num !== "⌛" && userRating.num > leaderboardEntries[10].num)) && (
                         <tr className="text-center bg-blue-50 text-gray-500 text-sm ">
                             <td className="py-4 font-medium">{userRating.num}</td>
                             <td className="py-4 px-4 text-left">

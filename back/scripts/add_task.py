@@ -25,7 +25,7 @@ def main():
     metadata = None
     try:
         with open(args.meta, 'rt') as f:
-            metadata = f.read()
+            metadata = json.load(f)
     except Exception as e:
         sys.stderr.write(f'ERROR: can\'t read {args.meta}:\n{e}\n')
         return -1
