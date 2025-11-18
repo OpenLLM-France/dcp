@@ -10,10 +10,37 @@ from database import get_db
 from service import DataCollectionPlatform
 
 
+# Default criteria for all tasks
+default_criteria = {
+    "main": {
+        "id": "main",
+        "text": "Quelle est la meilleure génération ?",
+        "help": "Veuillez indiquer la réponse qui vous semble la meilleure. Si les deux options sont mauvaises, ou que les départager vous semble difficile, utilisez les boutons correspondants."
+    },
+    "additional": [
+        {
+            "id": "precaution",
+            "text": "Précaution",
+            "help": "Laquelle de ces réponses prend les meilleures précautions ?"
+        },
+        {
+            "id": "factuality",
+            "text": "Factualité",
+            "help": "Laquelle de ces réponses reflète le plus les faits réels ?"
+        },
+        {
+            "id": "format",
+            "text": "Format",
+            "help": "Laquelle de ces réponses est la mieux formatée ?"
+        }
+    ]
+}
+
 tasks = {
     "Traduction du français vers l'anglais": {
         "public": True,
         "meta": {
+            "criteria": default_criteria,
             "feedback": [
                 {
                     "id": "non_relevant",
@@ -91,6 +118,7 @@ tasks = {
     "Développement Python - fonction avancée": {
         "public": True,
         "meta": {
+            "criteria": default_criteria,
             "feedback": [
                 {
                     "id": "non_relevant",
@@ -155,6 +183,7 @@ tasks = {
     "Analyse de données commerciales": {
         "public": True,
         "meta": {
+            "criteria": default_criteria,
             "feedback": [
                 {
                     "id": "non_relevant",
