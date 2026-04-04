@@ -27,6 +27,11 @@ def _get_connection_url():
     return f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 
+def _use_external_database():
+    """Check if we should use an external database (e.g., GitHub Actions service container)."""
+    return os.environ.get("DATABASE_URL") is not None
+
+
 def _start_postgres():
     """Start PostgreSQL container using podman."""
     # Stop and remove existing container if any
@@ -88,10 +93,14 @@ def _stop_postgres():
 
 @pytest.fixture(scope="session")
 def postgres_engine():
-    """Start PostgreSQL container for the test session."""
-    engine = _start_postgres()
-    yield engine
-    _stop_postgres()
+    """Start PostgreSQL container for the test session, or use external database if DATABASE_URL is set."""
+    if _use_external_database():
+        engine = create_engine(os.environ["DATABASE_URL"])
+        yield engine
+    else:
+        engine = _start_postgres()
+        yield engine
+        _stop_postgres()
 
 
 @pytest.fixture(autouse=True)
