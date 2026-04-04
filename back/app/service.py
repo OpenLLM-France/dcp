@@ -8,7 +8,7 @@ import hashlib
 from sqlalchemy import exists, select, func, and_, distinct
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from models import normalize_json, User, UserSession, Task, UserTaskPermission, Prompt, Generation, GenerationView, GenerationParams, TaskInstance, Vote, Tag, Agreement, UserSignature, Bot, Instruction, Rating
+from .models import normalize_json, User, UserSession, Task, UserTaskPermission, Prompt, Generation, GenerationView, GenerationParams, TaskInstance, Vote, Tag, Agreement, UserSignature, Bot, Instruction, Rating
 
 
 class DataCollectionPlatform:
@@ -879,6 +879,9 @@ class DataCollectionPlatform:
 
 
     def update_ratings(self, db, data: list[dict]):
+        if not data:
+            raise ValueError("Empty data")
+
         dialect = db.bind.dialect.name
 
         if dialect in ('postgresql'):

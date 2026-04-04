@@ -3,3 +3,4 @@ python-dotenv
 psycopg2
 SQLAlchemy
 sqlalchemy-utils
+testcontainers[postgresql]>=4.0.0
