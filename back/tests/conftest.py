@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.service import DataCollectionPlatform
 from app.models import (
-    Task, Instruction, Prompt, Generation, GenerationParams, 
+    Task, Instruction, Prompt, Generation, GenerationParams,
     TaskInstance, GenerationView, UserTaskPermission, User, Bot,
     Agreement, UserSignature
 )
@@ -144,10 +144,10 @@ def seeded_instruction(db_session, platform):
 def seeded_task(db_session, platform, seeded_instruction):
     """Create a task with instruction for tests."""
     task_id = platform.add_task(
-        db_session, 
-        "Test Task", 
-        True, 
-        {"test": "data"}, 
+        db_session,
+        "Test Task",
+        True,
+        {"test": "data"},
         seeded_instruction.id
     )
     return {
@@ -174,9 +174,9 @@ def seeded_generations(db_session, platform, seeded_prompts):
     for prompt in seeded_prompts[:3]:
         for j in range(2):
             gen_id = platform.add_generation(
-                db_session, 
-                f"Generation {j} for prompt {prompt.id}", 
-                params_id, 
+                db_session,
+                f"Generation {j} for prompt {prompt.id}",
+                params_id,
                 prompt.id
             )
             generations.append(db_session.query(Generation).filter_by(id=gen_id).one())
@@ -262,14 +262,66 @@ def task_instance_for_user(db_session, platform, complete_task_setup):
     session_id = complete_task_setup['session_id']
     user_id = complete_task_setup['user_id']
     task_id = complete_task_setup['task_id']
-    
+
     task_instance = platform.get_task_instance_for_user(
         db_session, str(task_id), user_id
     )
-    
+
     return {
         'task_instance': task_instance,
         'user_id': user_id,
         'session_id': session_id,
         'task_id': task_id
     }
+
+
+# ============================================================================
+# API Test Fixtures
+# ============================================================================
+
+@pytest.fixture
+def api_client(postgres_engine):
+    """Create TestClient for API testing with test database."""
+    import sys
+    from pathlib import Path
+
+    # Add back directory to path for proper imports
+    back_dir = Path(__file__).parent.parent
+    if str(back_dir) not in sys.path:
+        sys.path.insert(0, str(back_dir))
+
+    from fastapi.testclient import TestClient
+    from fastapi import Depends
+    from sqlalchemy.orm import sessionmaker
+    from app.main import app
+    from app.database import Base, get_db
+
+    # Create session factory
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=postgres_engine)
+
+    # Override database dependency
+    def override_get_db():
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    # Create client with follow_redirects=False to prevent issues with StaticFiles
+    client = TestClient(app, follow_redirects=False)
+    yield client
+
+    # Cleanup
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def authenticated_client(api_client):
+    """Client with authenticated session (cookie set from /home endpoint)."""
+    response = api_client.get("/home")
+    assert response.status_code == 200
+    assert "session_id" in response.json()
+    session_id = response.json()["session_id"]
+    return api_client, session_id
