@@ -313,4 +313,9 @@ def get_rating(start: int = None, count: int = 10, session_id: str = Cookie(None
 
 
 import os
-app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "public"), html=True), name="public")
+
+# Determine the public directory path - works in both Docker and local development
+# In Docker: /app/public (frontend built files)
+# In local dev: ../public relative to this file (back/app/public)
+public_dir = "/app/public" if os.path.exists("/app/public") else os.path.join(os.path.dirname(__file__), "public")
+app.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
