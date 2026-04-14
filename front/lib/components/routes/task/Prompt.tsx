@@ -1,5 +1,5 @@
 // Utilities
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import * as api from "@/lib/api";
 import { marked } from "marked";
 import markedKatex from "marked-katex-extension";
@@ -8,6 +8,8 @@ import "katex/dist/katex.min.css";
 // Contexts
 import { TasksContext } from "@/lib/contexts/TasksProvider";
 import Flag from "@/lib/icons/Flag";
+import ChevronDown from "@/lib/icons/ChevronDown";
+import ChevronUp from "@/lib/icons/ChevronUp";
 
 // Configure marked options
 marked.use(
@@ -61,6 +63,56 @@ function render(text: string): string {
     return marked(preprocessLatexNewlines(text || "")) as string;
 }
 
+interface Message {
+    role: string;
+    content: string;
+}
+
+/**
+ * Preprocess RAG document chunks so separators render consistently.
+ * The raw format uses lines of dashes as separators, which Markdown would
+ * otherwise interpret as h2 underlines, making some chunk titles huge.
+ */
+function preprocessDocuments(content: string): string {
+    return content
+        .replace(/^`?\[/, "`[")
+        .replace(/\n-{5,}\n/g, "\n\n---\n\n");
+}
+
+/**
+ * Split a system message into its instruction part and its retrieved documents part.
+ * Returns `null` for `documents` if the marker is not found.
+ */
+function splitSystemContent(content: string): { instruction: string; documents: string | null } {
+    const marker = "Voici les documents récupérés";
+    const idx = content.indexOf(marker);
+    if (idx === -1) return { instruction: content, documents: null };
+
+    const afterMarker = content.slice(idx + marker.length).replace(/^\s*:\s*/, "");
+    return {
+        instruction: content.slice(0, idx).trimEnd(),
+        documents: afterMarker.trim(),
+    };
+}
+
+/**
+ * Try to parse a prompt string as a message list.
+ */
+function parseMessageList(text: string): Message[] | null {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("[{") || !trimmed.endsWith("}]")) return null;
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed) && parsed.every(m => m && typeof m === "object" && "role" in m && "content" in m)) {
+            return parsed;
+        }
+    } catch {
+        // fallthrough
+    }
+    return null;
+}
+
 /**
  * Component properties
  */
@@ -74,6 +126,8 @@ interface PromptProps {
  */
 export default function Prompt({ text, getNewInstance }: PromptProps) {
     const currentTask = useContext(TasksContext).currentTask;
+    const [instructionExpanded, setInstructionExpanded] = useState(false);
+    const [documentsExpanded, setDocumentsExpanded] = useState(false);
 
     async function report() {
         if (!confirm("Voulez-vous vraiment signaler ce prompt ?\n\nVous passerez ensuite au prompt suivant.")) return;
@@ -91,6 +145,8 @@ export default function Prompt({ text, getNewInstance }: PromptProps) {
         getNewInstance();
     }
 
+    const messages = parseMessageList(text);
+
     return (
         <div className="bg-white w-full rounded-xl border border-gray-200 p-6 mb-3">
             <div className="flex justify-between">
@@ -104,7 +160,68 @@ export default function Prompt({ text, getNewInstance }: PromptProps) {
                     <Flag className="fill-orange-400 group-hover:fill-orange-500 size-5" />
                 </button>
             </div>
-            <div className="prose max-w-none mt-3 text-gray-700" dangerouslySetInnerHTML={{ __html: render(text) }} />
+
+            {messages ? (
+                <div className="mt-3 space-y-3">
+                    {messages.map((msg, i) => {
+                        if (msg.role === "system") {
+                            const { instruction, documents } = splitSystemContent(msg.content || "");
+                            return (
+                                <div key={i} className="space-y-3">
+                                    <div className="border border-gray-200 rounded-lg">
+                                        <button
+                                            onClick={() => setInstructionExpanded(!instructionExpanded)}
+                                            className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 rounded-lg cursor-pointer"
+                                        >
+                                            <span>Instruction système</span>
+                                            {instructionExpanded
+                                                ? <ChevronUp className="size-4 fill-gray-400" />
+                                                : <ChevronDown className="size-4 fill-gray-400" />
+                                            }
+                                        </button>
+                                        {instructionExpanded && (
+                                            <div
+                                                className="px-4 pb-3 prose max-w-none text-sm text-gray-500"
+                                                dangerouslySetInnerHTML={{ __html: render(instruction) }}
+                                            />
+                                        )}
+                                    </div>
+                                    {documents !== null && (
+                                        <div className="border border-gray-200 rounded-lg">
+                                            <button
+                                                onClick={() => setDocumentsExpanded(!documentsExpanded)}
+                                                className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 rounded-lg cursor-pointer"
+                                            >
+                                                <span>Documents récupérés</span>
+                                                {documentsExpanded
+                                                    ? <ChevronUp className="size-4 fill-gray-400" />
+                                                    : <ChevronDown className="size-4 fill-gray-400" />
+                                                }
+                                            </button>
+                                            {documentsExpanded && (
+                                                <div
+                                                    className="px-4 pb-3 prose max-w-none text-sm text-gray-500"
+                                                    dangerouslySetInnerHTML={{ __html: render(preprocessDocuments(documents)) }}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div
+                                key={i}
+                                className="prose max-w-none text-gray-700"
+                                dangerouslySetInnerHTML={{ __html: render(msg.content) }}
+                            />
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="prose max-w-none mt-3 text-gray-700" dangerouslySetInnerHTML={{ __html: render(text) }} />
+            )}
         </div>
     );
 }
