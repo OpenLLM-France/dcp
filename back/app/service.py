@@ -4,11 +4,12 @@ import string
 import random
 import json
 import hashlib
+import uuid
 
 from sqlalchemy import exists, select, func, and_, distinct
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from models import normalize_json, User, UserSession, Task, UserTaskPermission, Prompt, Generation, GenerationView, GenerationParams, TaskInstance, Vote, Tag, Agreement, UserSignature, Bot, Instruction, Rating
+from .models import normalize_json, User, UserSession, Task, UserTaskPermission, Prompt, Generation, GenerationView, GenerationParams, TaskInstance, Vote, Tag, Agreement, UserSignature, Bot, Instruction, Rating
 
 
 class DataCollectionPlatform:
@@ -261,9 +262,15 @@ class DataCollectionPlatform:
 
 
     def get_user_id(self, db, session_id):
+        # Validate UUID format if session_id is a string
+        if isinstance(session_id, str):
+            try:
+                uuid.UUID(session_id)
+            except (ValueError, TypeError):
+                return None
         db_session = db.get(UserSession, session_id)
         if db_session is None:
-            return None 
+            return None
         return db_session.user_id
 
 
@@ -331,7 +338,7 @@ class DataCollectionPlatform:
             prompts.append(prompt)
 
         if 0 == len(prompts):
-            raise 'No prompts for given task_id and user_id'
+            raise Exception('No prompts for given task_id and user_id')
 
         random.shuffle(prompts)
 
@@ -346,7 +353,7 @@ class DataCollectionPlatform:
             )
             .outerjoin(
                 GenerationView,
-                (Generation.id == GenerationView.generation_id) & 
+                (Generation.id == GenerationView.generation_id) &
                 (GenerationView.user_id == user_id)  # Match both generation and user
             )
             .where(Generation.prompt_id == prompt_id)
@@ -368,7 +375,7 @@ class DataCollectionPlatform:
             generations.append(gen)
 
         if len(generations) < 2:
-            raise 'Not enougth generations for given prompt_id'
+            raise Exception('Not enougth generations for given prompt_id')
 
         random.shuffle(generations)
 
@@ -453,7 +460,7 @@ class DataCollectionPlatform:
             .join(TaskInstance, Vote.taskinstance_id == TaskInstance.id)
             .where(Vote.timestamp >= timestamp, Vote.id > last_vote_id)
         )
-        
+
         result = db.execute(stmt)
         votes_with_info = [
             {
@@ -484,7 +491,7 @@ class DataCollectionPlatform:
             .join(TaskInstance, Tag.taskinstance_id == TaskInstance.id)
             .where(Tag.timestamp >= timestamp, Tag.id > last_tag_id)
         )
-        
+
         result = db.execute(stmt)
         tags_with_info = [
             {
@@ -543,10 +550,10 @@ class DataCollectionPlatform:
 
     def record_agreement(self, db, session_id, agreement_id):
         user_id = self.get_user_id(db, session_id)
-        
+
         if not user_id:
             raise ValueError("Invalid session ID")
-        
+
         # Check if already signed
         stmt = (
             select(UserSignature)
@@ -557,7 +564,7 @@ class DataCollectionPlatform:
                 )
             )
         )
-        
+
         existing = db.execute(stmt).first()
         if existing:
             return existing[0]  # Return the existing signature
@@ -791,6 +798,8 @@ class DataCollectionPlatform:
         )
 
         result = db.scalars(stmt).first()
+        if result is None:
+            return None
         return { 'id': result.id, 'text': result.text }
 
 
@@ -879,6 +888,9 @@ class DataCollectionPlatform:
 
 
     def update_ratings(self, db, data: list[dict]):
+        if not data:
+            raise ValueError("Empty data")
+
         dialect = db.bind.dialect.name
 
         if dialect in ('postgresql'):

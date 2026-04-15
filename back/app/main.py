@@ -3,7 +3,7 @@
 import json
 
 from typing import List
-from models import Tag as TagModel  # Rename to avoid confusion
+from .models import Tag as TagModel  # Rename to avoid confusion
 from pydantic import BaseModel
 from pydantic.types import Json
 from uuid import UUID
@@ -15,8 +15,8 @@ from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy.orm import Session
 
-from database import Base, engine, get_db
-from service import DataCollectionPlatform
+from .database import Base, engine, get_db
+from .service import DataCollectionPlatform
 
 
 app = FastAPI(title="Crowdsourcing")
@@ -54,7 +54,11 @@ def home(
 
     user_id = None
     if session_id:
-        user_id = srv.get_user_id(db, session_id)
+        try:
+            user_id = srv.get_user_id(db, session_id)
+        except Exception:
+            # Invalid session ID format (e.g., not a UUID)
+            user_id = None
 
     if session_id is None or user_id is None:
         session_id, user_id = srv.add_user(db)
@@ -84,7 +88,14 @@ def _get_user_id(db: Session, session_id: str):
     srv = DataCollectionPlatform()
 
     # Check if user ID is valid
-    user_id = srv.get_user_id(db, session_id)
+    try:
+        user_id = srv.get_user_id(db, session_id)
+    except Exception:
+        # Invalid session ID format (e.g., not a UUID)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session"
+        )
+
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session"
@@ -125,22 +136,22 @@ class DefaultRequest(BaseModel):
     pass
 
 
-@app.post("/task/{task_id}/next", response_model=NextTask)
+@app.post("/task/{task_id}/next")
 def task(
     request: Request,
     response: Response,
     task_id: str,
     session_id: str = Cookie(None),
     db: Session = Depends(get_db),
-) -> NextTask:
+):
     srv, user_id = _get_user_id(db, session_id)
 
     user_tasks = srv.get_tasks_for_user(db, user_id)  # check if this task is allowed
     print(user_tasks)
     if str(task_id) not in [str(v["id"]) for v in user_tasks]:
-        return {
-            "message": "Unknown task id"
-        }
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown task id"
+        )
     task = srv.get_task_by_id(db, task_id)
     task_instance = srv.get_task_instance_for_user(db, task_id, user_id)
 
@@ -301,4 +312,10 @@ def get_rating(start: int = None, count: int = 10, session_id: str = Cookie(None
     return srv.get_rating(db, user_id, start, count)
 
 
-app.mount("/", StaticFiles(directory="/app/public", html=True), name="public")
+import os
+
+# Determine the public directory path - works in both Docker and local development
+# In Docker: /app/public (frontend built files)
+# In local dev: ../public relative to this file (back/app/public)
+public_dir = "/app/public" if os.path.exists("/app/public") else os.path.join(os.path.dirname(__file__), "public")
+app.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
